@@ -1,0 +1,245 @@
+<?php 
+session_start();
+$conn = mysqli_connect("localhost", "root", "", "bus_system");
+
+if(!isset($_SESSION['user'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$buses = mysqli_query($conn, "SELECT * FROM buses");
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+
+            background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: -1;
+        }
+
+        .container {
+            width: 90%;
+            margin: auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .logout {
+            color: white;
+            text-decoration: none;
+            background: red;
+            padding: 8px 15px;
+            border-radius: 8px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+
+        th {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:hover {
+            background: #f1f1f1;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input, select {
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        /* GCASH BOX */
+        #gcashBox {
+            display: none;
+            padding: 10px;
+            background: #f1f1f1;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <div class="title">BUS RESERVATION SYSTEM</div>
+        <a href="logout.php" class="logout">Logout</a>
+    </div>
+
+    <!-- AVAILABLE BUSES -->
+    <div class="card">
+        <h2>Available Buses</h2>
+
+        <table>
+            <tr>
+                <th>Bus Number</th>
+                <th>Bus Name</th>
+                <th>Source</th>
+                <th>Destination</th>
+                <th>Price</th>
+                <th>Time</th>
+            </tr>
+
+            <?php 
+            $bus_number = 101;
+
+            while($row = mysqli_fetch_assoc($buses)) { 
+            ?>
+            <tr>
+                <td><?php echo $bus_number++; ?></td>
+                <td><?php echo $row['bus_name']; ?></td>
+                <td><?php echo $row['source_city']; ?></td>
+                <td><?php echo $row['destination_city']; ?></td>
+                <td><?php echo $row['ticket_price']; ?></td>
+                <td><?php echo $row['time']; ?></td>
+            </tr>
+            <?php } ?>
+        </table>
+    </div>
+
+    <!-- BOOKING FORM -->
+    <div class="card">
+        <h2>Book Now</h2>
+
+        <form action="save.php" method="POST">
+
+            <input type="text" name="name" placeholder="Enter Name" required>
+
+            <select name="bus_id" required>
+                <option value="">-- Select Bus --</option>
+
+                <?php
+                $buses2 = mysqli_query($conn, "SELECT * FROM buses");
+                while($b = mysqli_fetch_assoc($buses2)) {
+                ?>
+                    <option value="<?php echo $b['id']; ?>">
+                        <?php echo $b['bus_name']; ?> 
+                        (<?php echo $b['source_city']; ?> - <?php echo $b['destination_city']; ?>)
+                    </option>
+                <?php } ?>
+            </select>
+
+            <input type="number" name="seat" placeholder="Seat Number" required>
+
+<!-- SEAT TYPE (DISCOUNT) -->
+<select name="seat_type" id="seatType" onchange="updatePrice()" required>
+    <option value="">-- Select Seat Type --</option>
+    <option value="adult">Adult (No Discount)</option>
+    <option value="student">Student (10% OFF)</option>
+    <option value="senior">Senior (20% OFF)</option>
+</select>
+  <input type="number" name="tickets" placeholder="Tickets" required>
+ <input type="number" name="price" placeholder="Price" required>
+
+
+
+            
+
+
+            <!-- PAYMENT METHOD -->
+            <select name="payment_method" id="payment" onchange="showGcash()" required>
+                <option value="">-- Select Payment --</option>
+                <option value="cash">Cash</option>
+                <option value="gcash">GCash</option>
+            </select>
+
+            <!-- GCASH BOX -->
+            <div id="gcashBox">
+                <p><strong>Send Payment To:</strong></p>
+                <p>GCash Number: <b>0946-697-3705</b></p>
+                <p>Name: <b>J****l T****s</b></p>
+            </div>
+
+            <button type="submit">Book Now</button>
+
+        </form>
+    </div>
+
+</div>
+
+<script>
+function showGcash() {
+    var payment = document.getElementById("payment").value;
+    var box = document.getElementById("gcashBox");
+
+    if(payment === "gcash") {
+        box.style.display = "block";
+    } else {
+        box.style.display = "none";
+    }
+}
+</script>
+
+</body>
+</html>
